@@ -9,7 +9,7 @@ import BingoCard from '@/components/bingo/BingoCard';
 import GameModeSelector from '@/components/bingo/GameModeSelector';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { PartyPopper, RefreshCcw, Play, Trophy } from 'lucide-react'; // Changed Confetti to PartyPopper
+import { PartyPopper, RefreshCcw, Play, Trophy } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from 'next/link';
 
@@ -23,7 +23,6 @@ export default function BingoPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Load phrases from localStorage on component mount (client-side only)
     const storedPhrases = localStorage.getItem(PHRASES_STORAGE_KEY);
     if (storedPhrases) {
       try {
@@ -45,16 +44,6 @@ export default function BingoPage() {
     setWinningPattern([]);
   }, [phrases, selectedGameMode]);
 
-  useEffect(() => {
-    // Auto-start game if phrases are loaded and a mode is selected, but not if already started
-    // This might be too aggressive, let's rely on the button.
-    // if (phrases.length > 0 && selectedGameMode && !gameStarted && !gameOver) {
-    //   startNewGame();
-    // }
-    // Instead, if the game is not started, show a placeholder or setup prompt
-  }, [phrases, selectedGameMode, gameStarted, gameOver, startNewGame]);
-
-
   const handleSquareClick = (index: number) => {
     if (gameOver || !gameStarted) return;
 
@@ -74,7 +63,7 @@ export default function BingoPage() {
       toast({
         title: "BINGO!",
         description: `You won with ${gameModeDetails?.name || 'the selected mode'}!`,
-        action: <PartyPopper className="text-yellow-400" />, // Changed Confetti to PartyPopper
+        action: <PartyPopper className="text-yellow-400" />,
         duration: 5000,
       });
     }
@@ -82,13 +71,25 @@ export default function BingoPage() {
 
   const handleModeChange = (mode: GameMode) => {
     setSelectedGameMode(mode);
-    // Reset game if mode changes after starting
     if (gameStarted) {
-      setGameStarted(false); // This will allow re-triggering startNewGame via button
+      setGameStarted(false);
       setGameOver(false);
-      setCurrentCard([]); // Clear card to show loading/prompt
+      setCurrentCard([]);
       setWinningPattern([]);
     }
+  };
+
+  const handleResetToDefaults = () => {
+    setPhrases(DEFAULT_PHRASES);
+    localStorage.setItem(PHRASES_STORAGE_KEY, JSON.stringify(DEFAULT_PHRASES));
+    setGameStarted(false);
+    setGameOver(false);
+    setCurrentCard([]);
+    setWinningPattern([]);
+    toast({
+      title: "Phrases Reset to Default",
+      description: "The bingo phrases have been reset. You can start a new game with the default set.",
+    });
   };
 
   const sufficientPhrases = phrases.length >= BINGO_CARD_TOTAL_SQUARES - (selectedGameMode === 'classic' ? 1:0);
@@ -99,13 +100,17 @@ export default function BingoPage() {
 
       {!sufficientPhrases && (
          <Alert variant="destructive" className="max-w-lg">
-          <Trophy className="h-4 w-4" /> {/* Using Trophy as a placeholder for an alert icon */}
+          <Trophy className="h-4 w-4" />
           <AlertTitle>Not Enough Phrases!</AlertTitle>
           <AlertDescription>
-            You need at least {BINGO_CARD_TOTAL_SQUARES - (selectedGameMode === 'classic' ? 1:0)} unique phrases for the current game mode. Please 
-            <Button variant="link" className="p-0 h-auto" asChild>
-              <Link href="/setup"> add more phrases</Link>
-            </Button> or use the defaults.
+            You need at least {BINGO_CARD_TOTAL_SQUARES - (selectedGameMode === 'classic' ? 1:0)} unique phrases for the current game mode. Please
+            <Button variant="link" className="p-0 h-auto mx-1" asChild>
+              <Link href="/setup">add more phrases</Link>
+            </Button>
+            or use the
+            <Button variant="link" className="p-0 h-auto mx-1" onClick={handleResetToDefaults}>
+              defaults
+            </Button>.
           </AlertDescription>
         </Alert>
       )}
@@ -124,7 +129,7 @@ export default function BingoPage() {
           <h2 className="text-2xl font-semibold mb-4 text-primary">Ready to Play?</h2>
           <p className="text-muted-foreground mb-6">
             Select your game mode above and hit "Start Game" to begin the fun!
-            { !sufficientPhrases && " You might want to set up your phrases first."}
+            { !sufficientPhrases && " You might want to set up your phrases first or use the defaults."}
           </p>
         </div>
       )}
@@ -134,7 +139,7 @@ export default function BingoPage() {
           onClick={startNewGame} 
           size="lg" 
           className="bg-accent hover:bg-accent/90 text-accent-foreground"
-          disabled={!sufficientPhrases && !gameStarted} // Disable if not enough phrases unless game already started (then it's a reset)
+          disabled={!sufficientPhrases && !gameStarted}
         >
           {gameStarted ? <RefreshCcw className="mr-2 h-5 w-5" /> : <Play className="mr-2 h-5 w-5" />}
           {gameStarted ? (gameOver ? 'New Game' : 'Restart Game') : 'Start Game'}
@@ -151,4 +156,3 @@ export default function BingoPage() {
     </div>
   );
 }
-
