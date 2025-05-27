@@ -1,3 +1,4 @@
+
 export interface BingoSquareState {
   id: string;
   text: string;
@@ -24,3 +25,4 @@ export const BINGO_CARD_SIZE = 5; // 5x5 grid
 export const BINGO_CARD_TOTAL_SQUARES = BINGO_CARD_SIZE * BINGO_CARD_SIZE;
 
 export const GAME_MODE_STORAGE_KEY = 'bingoGameMode';
+export const PLAYER_NAME_STORAGE_KEY = 'bingoPlayerName';

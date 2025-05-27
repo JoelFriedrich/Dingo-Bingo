@@ -4,12 +4,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { BingoSquareState, GameMode } from '@/types/bingo';
-import { BINGO_CARD_TOTAL_SQUARES, GAME_MODES, GAME_MODE_STORAGE_KEY } from '@/types/bingo';
+import { BINGO_CARD_TOTAL_SQUARES, GAME_MODES, GAME_MODE_STORAGE_KEY, PLAYER_NAME_STORAGE_KEY } from '@/types/bingo';
 import { generateBingoCard, checkWin, DEFAULT_PHRASES, PHRASES_STORAGE_KEY } from '@/lib/bingo-utils';
 import BingoCard from '@/components/bingo/BingoCard';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { PartyPopper, RefreshCcw, Play, Trophy, Settings2 } from 'lucide-react'; // Changed Settings to Settings2 for variety
+import { PartyPopper, RefreshCcw, Play, Trophy, Settings2, UserCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from 'next/link';
 
@@ -23,6 +24,8 @@ export default function BingoPage() {
   const [winningPattern, setWinningPattern] = useState<number[]>([]);
   const { toast } = useToast();
   const [isLoadingMode, setIsLoadingMode] = useState(true);
+  const [playerName, setPlayerName] = useState<string>('');
+  const [playerNameInput, setPlayerNameInput] = useState<string>('');
 
   useEffect(() => {
     const storedPhrases = localStorage.getItem(PHRASES_STORAGE_KEY);
@@ -41,11 +44,16 @@ export default function BingoPage() {
     if (storedMode && GAME_MODES.some(gm => gm.id === storedMode)) {
       setSelectedGameMode(storedMode);
     } else {
-      // If no valid mode stored, or mode is not in our list, redirect to select mode
-      router.replace('/select-mode'); // Using replace to not add to history stack
+      router.replace('/select-mode');
       return; 
     }
     setIsLoadingMode(false);
+
+    const storedPlayerName = localStorage.getItem(PLAYER_NAME_STORAGE_KEY);
+    if (storedPlayerName) {
+      setPlayerName(storedPlayerName);
+      setPlayerNameInput(storedPlayerName);
+    }
   }, [router]);
 
   const startNewGame = useCallback(() => {
@@ -63,7 +71,6 @@ export default function BingoPage() {
     const newCard = [...currentCard];
     const square = newCard[index];
 
-    // Classic mode free space is not clickable to change state, it's always selected.
     if (square.isFreeSpace && selectedGameMode === 'classic') return;
 
     newCard[index] = { ...square, selected: !square.selected };
@@ -76,7 +83,7 @@ export default function BingoPage() {
       const gameModeDetails = GAME_MODES.find(gm => gm.id === selectedGameMode);
       toast({
         title: "BINGO!",
-        description: `You won with ${gameModeDetails?.name || 'the selected mode'}!`,
+        description: `${playerName || 'Player'} won with ${gameModeDetails?.name || 'the selected mode'}!`,
         action: <PartyPopper className="text-yellow-400" />,
         duration: 5000,
       });
@@ -98,10 +105,28 @@ export default function BingoPage() {
     });
   };
 
+  const handleSavePlayerName = () => {
+    if (playerNameInput.trim()) {
+      setPlayerName(playerNameInput.trim());
+      localStorage.setItem(PLAYER_NAME_STORAGE_KEY, playerNameInput.trim());
+      toast({
+        title: "Player Name Saved!",
+        description: `You are now playing as ${playerNameInput.trim()}.`,
+      });
+    } else {
+      setPlayerName('');
+      localStorage.removeItem(PLAYER_NAME_STORAGE_KEY);
+      toast({
+        title: "Player Name Cleared",
+        description: "You are now playing as Guest.",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (isLoadingMode || !selectedGameMode) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
-        {/* You can add a spinner or a more descriptive loading message here */}
         <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -115,7 +140,7 @@ export default function BingoPage() {
   const currentGameModeDetails = GAME_MODES.find(gm => gm.id === selectedGameMode);
 
   return (
-    <div className="flex flex-col items-center gap-8 py-8">
+    <div className="flex flex-col items-center gap-6 py-8">
       <div className="text-center p-4 bg-card rounded-lg shadow-md w-full max-w-md">
         <h1 className="text-2xl sm:text-3xl font-bold text-primary">
           {currentGameModeDetails?.name || 'Bingo'}
@@ -127,6 +152,28 @@ export default function BingoPage() {
           </Link>
         </Button>
       </div>
+
+      {/* Player Name Section */}
+      <div className="w-full max-w-md p-4 bg-card rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-3 text-center text-primary flex items-center justify-center gap-2">
+          <UserCircle className="h-6 w-6" /> Player
+        </h2>
+        <div className="flex items-center gap-2 mb-2">
+          <Input
+            id="playerNameInput"
+            type="text"
+            placeholder="Enter your name (e.g., Guest)"
+            value={playerNameInput}
+            onChange={(e) => setPlayerNameInput(e.target.value)}
+            className="flex-grow"
+            aria-label="Player Name"
+          />
+          <Button onClick={handleSavePlayerName} variant="outline" size="sm">Set Name</Button>
+        </div>
+        {playerName && <p className="text-xs text-muted-foreground text-center">Currently playing as: <strong>{playerName}</strong></p>}
+        {!playerName && <p className="text-xs text-muted-foreground text-center">Enter a name or play as Guest.</p>}
+      </div>
+
 
       {!sufficientPhrases && (
          <Alert variant="destructive" className="max-w-lg">
@@ -156,7 +203,7 @@ export default function BingoPage() {
         </div>
       ) : (
         <div className="text-center p-8 bg-card rounded-lg shadow-lg max-w-md">
-          <h2 className="text-2xl font-semibold mb-4 text-primary">Ready to Play {currentGameModeDetails?.name || ''}?</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-primary">Ready to Play {playerName ? `${playerName}'s` : ''} {currentGameModeDetails?.name || ''} Game?</h2>
           <p className="text-muted-foreground mb-6">
             Hit "Start Game" to begin the fun!
             { !sufficientPhrases && " You might want to set up your phrases first or use the defaults."}
@@ -169,7 +216,7 @@ export default function BingoPage() {
           onClick={startNewGame} 
           size="lg" 
           className="bg-accent hover:bg-accent/90 text-accent-foreground"
-          disabled={(!sufficientPhrases && !gameStarted) || !selectedGameMode} // Ensure selectedGameMode is loaded
+          disabled={(!sufficientPhrases && !gameStarted) || !selectedGameMode}
         >
           {gameStarted ? <RefreshCcw className="mr-2 h-5 w-5" /> : <Play className="mr-2 h-5 w-5" />}
           {gameStarted ? (gameOver ? 'New Game' : 'Restart Game') : 'Start Game'}
@@ -179,7 +226,7 @@ export default function BingoPage() {
       {gameOver && (
         <div className="mt-4 p-6 bg-green-100 border-2 border-green-500 rounded-lg shadow-lg text-center max-w-md">
           <Trophy className="h-12 w-12 text-green-600 mx-auto mb-3" />
-          <h3 className="text-2xl font-bold text-green-700">Congratulations! You got BINGO!</h3>
+          <h3 className="text-2xl font-bold text-green-700">Congratulations{playerName ? `, ${playerName}` : ''}! You got BINGO!</h3>
           <p className="text-green-600 mt-2">Click "New Game" to play again with the same mode and phrases, or change mode.</p>
         </div>
       )}
