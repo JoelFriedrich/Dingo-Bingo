@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { BingoSquareState, GameMode } from '@/types/bingo';
 import { BINGO_CARD_TOTAL_SQUARES, GAME_MODES, GAME_MODE_STORAGE_KEY, PLAYER_NAME_STORAGE_KEY } from '@/types/bingo';
 import { generateBingoCard, checkWin, DEFAULT_PHRASES, PHRASES_STORAGE_KEY } from '@/lib/bingo-utils';
@@ -16,6 +16,7 @@ import Link from 'next/link';
 
 export default function BingoPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [phrases, setPhrases] = useState<string[]>(DEFAULT_PHRASES);
   const [currentCard, setCurrentCard] = useState<BingoSquareState[]>([]);
   const [selectedGameMode, setSelectedGameMode] = useState<GameMode | null>(null);
@@ -28,16 +29,51 @@ export default function BingoPage() {
   const [playerNameInput, setPlayerNameInput] = useState<string>('');
 
   useEffect(() => {
-    const storedPhrases = localStorage.getItem(PHRASES_STORAGE_KEY);
-    if (storedPhrases) {
+    const urlPhrasesParam = searchParams.get('phrases');
+    let loadedPhrasesFlag = false;
+
+    if (urlPhrasesParam) {
       try {
-        const parsedPhrases = JSON.parse(storedPhrases);
-        if (Array.isArray(parsedPhrases) && parsedPhrases.length > 0) {
-          setPhrases(parsedPhrases);
+        const decodedPhrasesStr = decodeURIComponent(urlPhrasesParam);
+        const phrasesFromUrl = decodedPhrasesStr.split(';;;').map(p => p.trim()).filter(p => p.length > 0);
+        if (phrasesFromUrl.length > 0) {
+          setPhrases(phrasesFromUrl);
+          localStorage.setItem(PHRASES_STORAGE_KEY, JSON.stringify(phrasesFromUrl));
+          toast({
+            title: "Phrases Loaded from URL",
+            description: "The custom phrases from the URL have been loaded.",
+          });
+          loadedPhrasesFlag = true;
+          // Optional: Clear the query param from URL. Consider if user might want to copy the URL again.
+          // router.replace('/', { scroll: false }); 
         }
       } catch (error) {
-        console.error("Failed to parse phrases from localStorage", error);
+        console.error("Failed to parse phrases from URL", error);
+        toast({
+          title: "Error Loading URL Phrases",
+          description: "Using stored or default phrases.",
+          variant: "destructive",
+        });
       }
+    }
+
+    if (!loadedPhrasesFlag) {
+      const storedPhrases = localStorage.getItem(PHRASES_STORAGE_KEY);
+      if (storedPhrases) {
+        try {
+          const parsedPhrases = JSON.parse(storedPhrases);
+          if (Array.isArray(parsedPhrases) && parsedPhrases.length > 0) {
+            setPhrases(parsedPhrases);
+            loadedPhrasesFlag = true;
+          }
+        } catch (error) {
+          console.error("Failed to parse phrases from localStorage", error);
+        }
+      }
+    }
+
+    if (!loadedPhrasesFlag) {
+      setPhrases(DEFAULT_PHRASES);
     }
 
     const storedMode = localStorage.getItem(GAME_MODE_STORAGE_KEY) as GameMode | null;
@@ -54,7 +90,7 @@ export default function BingoPage() {
       setPlayerName(storedPlayerName);
       setPlayerNameInput(storedPlayerName);
     }
-  }, [router]);
+  }, [router, searchParams, toast]);
 
   const startNewGame = useCallback(() => {
     if (!selectedGameMode) return; 
@@ -136,7 +172,8 @@ export default function BingoPage() {
     );
   }
 
-  const sufficientPhrases = phrases.length >= BINGO_CARD_TOTAL_SQUARES - (selectedGameMode === 'classic' ? 1:0);
+  const requiredPhrasesCount = BINGO_CARD_TOTAL_SQUARES - (selectedGameMode === 'classic' && phrases.some(p => p.toUpperCase() === 'FREE') ? 0 : (selectedGameMode === 'classic' ? 1 : 0));
+  const sufficientPhrases = phrases.length >= requiredPhrasesCount;
   const currentGameModeDetails = GAME_MODES.find(gm => gm.id === selectedGameMode);
 
   return (
@@ -153,7 +190,6 @@ export default function BingoPage() {
         </Button>
       </div>
 
-      {/* Player Name Section */}
       <div className="w-full max-w-md p-4 bg-card rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-3 text-center text-primary flex items-center justify-center gap-2">
           <UserCircle className="h-6 w-6" /> Player
@@ -177,15 +213,15 @@ export default function BingoPage() {
 
       {!sufficientPhrases && (
          <Alert variant="destructive" className="max-w-lg">
-          <Trophy className="h-4 w-4" />
+          <Trophy className="h-4 w-4" /> {/* Using Trophy as a generic icon, could be WarningTriangle */}
           <AlertTitle>Not Enough Phrases!</AlertTitle>
           <AlertDescription>
-            You need at least {BINGO_CARD_TOTAL_SQUARES - (selectedGameMode === 'classic' ? 1:0)} unique phrases for {currentGameModeDetails?.name || 'the current'} mode. Please
-            <Button variant="link" className="p-0 h-auto mx-1 text-base" asChild>
+            You need at least {requiredPhrasesCount} unique phrases for {currentGameModeDetails?.name || 'the current'} mode. Please
+            <Button variant="link" className="p-0 h-auto mx-1 text-base align-baseline" asChild>
               <Link href="/setup">add more phrases</Link>
             </Button>
             or use the
-            <Button variant="link" className="p-0 h-auto mx-1 text-base" onClick={handleResetToDefaults}>
+            <Button variant="link" className="p-0 h-auto mx-1 text-base align-baseline" onClick={handleResetToDefaults}>
               defaults
             </Button>.
           </AlertDescription>

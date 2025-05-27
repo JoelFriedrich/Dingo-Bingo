@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,7 +12,8 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { useToast } from '@/hooks/use-toast';
 import { PHRASES_STORAGE_KEY } from '@/lib/bingo-utils';
 import { useRouter } from 'next/navigation';
-import { Save, Settings } from 'lucide-react'; // Added Save icon, using Settings as a generic setup icon
+import { Save, Settings, Copy } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 
 const formSchema = z.object({
   phrases: z.string().min(10, { message: "Please provide a list of phrases." })
@@ -26,6 +27,7 @@ type SetupFormValues = z.infer<typeof formSchema>;
 export default function SetupPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const [shareableUrl, setShareableUrl] = useState<string | null>(null);
 
   const form = useForm<SetupFormValues>({
     resolver: zodResolver(formSchema),
@@ -33,6 +35,20 @@ export default function SetupPage() {
       phrases: '',
     },
   });
+
+  useEffect(() => {
+    const storedPhrases = localStorage.getItem(PHRASES_STORAGE_KEY);
+    if (storedPhrases) {
+      try {
+        const parsedPhrases: string[] = JSON.parse(storedPhrases);
+        if (Array.isArray(parsedPhrases) && parsedPhrases.length > 0) {
+          form.setValue('phrases', parsedPhrases.join(', '));
+        }
+      } catch (error) {
+        console.error("Failed to parse stored phrases for form init", error);
+      }
+    }
+  }, [form]);
 
   function onSubmit(values: SetupFormValues) {
     const phrasesArray = values.phrases.split(',').map(p => p.trim()).filter(p => p.length > 0);
@@ -43,8 +59,20 @@ export default function SetupPage() {
         title: "Phrases Saved!",
         description: "Your custom phrases are now ready for your Bingo game.",
       });
-      router.push('/');
+
+      // Generate shareable URL
+      const phrasesForUrl = phrasesArray.join(';;;'); // Using ';;;' as a robust separator
+      const encodedPhrases = encodeURIComponent(phrasesForUrl);
+      
+      // Ensure window is defined (runs on client)
+      if (typeof window !== "undefined") {
+        const baseUrl = window.location.origin;
+        const url = `${baseUrl}/?phrases=${encodedPhrases}`;
+        setShareableUrl(url);
+      }
+      // router.push('/'); // Optionally keep user on setup page to see/copy the shareable URL
     } else {
+      setShareableUrl(null);
       toast({
         title: "No Phrases Provided",
         description: "Please enter some phrases to save.",
@@ -52,6 +80,32 @@ export default function SetupPage() {
       });
     }
   }
+
+  const handleCopyUrl = () => {
+    if (shareableUrl && typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(shareableUrl).then(() => {
+        toast({ title: "URL Copied!", description: "Shareable URL copied to clipboard." });
+      }).catch(err => {
+        toast({ title: "Copy Failed", description: "Could not copy URL.", variant: "destructive" });
+        console.error('Failed to copy URL: ', err);
+      });
+    } else if (shareableUrl) {
+        // Fallback for older browsers or non-secure contexts if needed, though less common now
+        const textArea = document.createElement("textarea");
+        textArea.value = shareableUrl;
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            toast({ title: "URL Copied!", description: "Shareable URL copied to clipboard." });
+        } catch (err) {
+            toast({ title: "Copy Failed", description: "Could not copy URL.", variant: "destructive" });
+            console.error('Failed to copy URL with execCommand: ', err);
+        }
+        document.body.removeChild(textArea);
+    }
+  };
 
   return (
     <div className="container mx-auto py-8">
@@ -62,7 +116,7 @@ export default function SetupPage() {
             Customize Your Bingo Phrases
           </CardTitle>
           <CardDescription>
-            Enter a list of comma-separated words or phrases for your Bingo game.
+            Enter a list of comma-separated words or phrases for your Bingo game. These will be saved to your browser.
           </CardDescription>
         </CardHeader>
         <Form {...form}>
@@ -90,11 +144,28 @@ export default function SetupPage() {
               />
               <Button type="submit" className="w-full text-lg py-6 bg-primary hover:bg-primary/90">
                 <Save className="mr-2 h-5 w-5" />
-                Save Phrases
+                Save Phrases & Get Share Link
               </Button>
             </CardContent>
           </form>
         </Form>
+        {shareableUrl && (
+          <CardFooter className="flex-col items-start gap-2 pt-4 border-t mt-6">
+            <h3 className="text-lg font-semibold text-primary">Share Your Custom Phrases!</h3>
+            <p className="text-sm text-muted-foreground">
+              Copy and send this URL to others. When they open it, your phrases will be loaded for their game.
+            </p>
+            <div className="flex w-full items-center gap-2 mt-2">
+              <Input readOnly value={shareableUrl} className="flex-grow bg-muted/50" aria-label="Shareable URL" />
+              <Button onClick={handleCopyUrl} variant="outline" size="icon" aria-label="Copy URL">
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Note: Very long phrase lists can result in a very long URL.
+            </p>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );
