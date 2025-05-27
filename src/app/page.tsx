@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -8,7 +9,7 @@ import BingoCard from '@/components/bingo/BingoCard';
 import GameModeSelector from '@/components/bingo/GameModeSelector';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Confetti, RefreshCcw, Play, Trophy } from 'lucide-react';
+import { PartyPopper, RefreshCcw, Play, Trophy } from 'lucide-react'; // Changed Confetti to PartyPopper
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from 'next/link';
 
@@ -73,7 +74,7 @@ export default function BingoPage() {
       toast({
         title: "BINGO!",
         description: `You won with ${gameModeDetails?.name || 'the selected mode'}!`,
-        action: <Confetti className="text-yellow-400" />,
+        action: <PartyPopper className="text-yellow-400" />, // Changed Confetti to PartyPopper
         duration: 5000,
       });
     }
@@ -150,3 +151,4 @@ export default function BingoPage() {
     </div>
   );
 }
+
