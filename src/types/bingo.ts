@@ -22,3 +22,5 @@ export const GAME_MODES: GameModeDetails[] = [
 
 export const BINGO_CARD_SIZE = 5; // 5x5 grid
 export const BINGO_CARD_TOTAL_SQUARES = BINGO_CARD_SIZE * BINGO_CARD_SIZE;
+
+export const GAME_MODE_STORAGE_KEY = 'bingoGameMode';

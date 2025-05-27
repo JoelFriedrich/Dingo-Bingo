@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Puzzle } from 'lucide-react'; // Using Puzzle as a generic game icon
+import { Puzzle, Settings, ListChecks } from 'lucide-react'; 
 
 export default function Header() {
   return (
@@ -10,9 +10,18 @@ export default function Header() {
           <Puzzle className="h-8 w-8" />
           <span>Bingo Bonanza</span>
         </Link>
-        <nav>
+        <nav className="flex gap-1 sm:gap-2">
           <Button variant="ghost" asChild>
-            <Link href="/setup">Setup Phrases</Link>
+            <Link href="/select-mode" className="flex items-center gap-1 text-sm sm:text-base">
+              <ListChecks className="h-4 w-4" />
+              <span className="hidden sm:inline">Change </span>Mode
+            </Link>
+          </Button>
+          <Button variant="ghost" asChild>
+            <Link href="/setup" className="flex items-center gap-1 text-sm sm:text-base">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Setup </span>Phrases
+            </Link>
           </Button>
         </nav>
       </div>
