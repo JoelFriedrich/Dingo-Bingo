@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Puzzle, Settings, ListChecks } from 'lucide-react'; 
+import { Puzzle, Settings, ListChecks, Play } from 'lucide-react'; 
 
 export default function Header() {
   return (
@@ -11,6 +11,12 @@ export default function Header() {
           <span>Bingo Bonanza</span>
         </Link>
         <nav className="flex gap-1 sm:gap-2">
+          <Button variant="ghost" asChild>
+            <Link href="/" className="flex items-center gap-1 text-sm sm:text-base">
+              <Play className="h-4 w-4" />
+              Play
+            </Link>
+          </Button>
           <Button variant="ghost" asChild>
             <Link href="/select-mode" className="flex items-center gap-1 text-sm sm:text-base">
               <ListChecks className="h-4 w-4" />
