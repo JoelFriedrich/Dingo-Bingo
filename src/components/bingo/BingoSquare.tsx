@@ -24,7 +24,7 @@ export default function BingoSquare({ square, onClick, isWinningSquare, disabled
       className={cn(
         "bingo-square-container rounded-md shadow-md",
         (selected || isFreeSpace) && "is-flipped",
-        isWinningSquare && !isFreeSpace && "bingo-square-winning",
+        isWinningSquare && "bingo-square-winning", // Apply to all winning squares, including free space
         (isFreeSpace || disabled) ? "cursor-default" : "cursor-pointer"
       )}
       onClick={handleClick}
