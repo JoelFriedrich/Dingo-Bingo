@@ -8,7 +8,6 @@ import { BINGO_CARD_TOTAL_SQUARES, GAME_MODES, GAME_MODE_STORAGE_KEY } from '@/t
 import { generateBingoCard, checkWin, DEFAULT_PHRASES, PHRASES_STORAGE_KEY } from '@/lib/bingo-utils';
 import BingoCard from '@/components/bingo/BingoCard';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { PartyPopper, RefreshCcw, Play, Trophy, Settings2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -25,8 +24,17 @@ export default function BingoPage() {
   const [winningPattern, setWinningPattern] = useState<number[]>([]);
   const { toast } = useToast();
   const [isLoadingMode, setIsLoadingMode] = useState(true);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isClient) {
+      return;
+    }
+
     const urlPhrasesParam = searchParams.get('phrases');
     let loadedPhrasesFlag = false;
 
@@ -42,8 +50,6 @@ export default function BingoPage() {
             description: "The custom phrases from the URL have been loaded.",
           });
           loadedPhrasesFlag = true;
-          // Optional: Clear the query param from URL. Consider if user might want to copy the URL again.
-          // router.replace('/', { scroll: false });
         }
       } catch (error) {
         console.error("Failed to parse phrases from URL", error);
@@ -79,11 +85,11 @@ export default function BingoPage() {
       setSelectedGameMode(storedMode);
     } else {
       router.replace('/select-mode');
-      return;
+      return; // Exit if redirecting, setIsLoadingMode will not be called for this path
     }
     setIsLoadingMode(false);
 
-  }, [router, searchParams, toast]);
+  }, [isClient, router, searchParams, toast]);
 
   const startNewGame = useCallback(() => {
     if (!selectedGameMode) return;
@@ -121,7 +127,9 @@ export default function BingoPage() {
 
   const handleResetToDefaults = () => {
     setPhrases(DEFAULT_PHRASES);
-    localStorage.setItem(PHRASES_STORAGE_KEY, JSON.stringify(DEFAULT_PHRASES));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(PHRASES_STORAGE_KEY, JSON.stringify(DEFAULT_PHRASES));
+    }
     if (gameStarted) {
         setGameStarted(false);
         setGameOver(false);
@@ -134,7 +142,7 @@ export default function BingoPage() {
     });
   };
 
-  if (isLoadingMode || !selectedGameMode) {
+  if (!isClient || isLoadingMode || !selectedGameMode) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
         <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -222,3 +230,4 @@ export default function BingoPage() {
     </div>
   );
 }
+
