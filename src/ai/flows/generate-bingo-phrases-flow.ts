@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to generate bingo phrases based on a theme.
@@ -62,10 +63,26 @@ const generateBingoPhrasesFlow = ai.defineFlow(
     // Ensure a default count if not provided, or clamp it if necessary.
     const validatedInput = { ...input, count: input.count || 25 };
     
-    const {output} = await prompt(validatedInput);
-    if (!output || !output.phrases) {
-      throw new Error('AI failed to generate phrases or returned an invalid format.');
+    try {
+      const {output} = await prompt(validatedInput);
+      if (!output || !output.phrases) {
+        // This specific error is already handled by the client-side catch block if AI returns empty/invalid
+        throw new Error('AI failed to generate phrases or returned an invalid format.');
+      }
+      return output;
+    } catch (flowError) {
+      // Log the detailed error on the server-side (Next.js console)
+      console.error('[DingoBingo] Error within generateBingoPhrasesFlow:', flowError);
+      
+      // Re-throw a new error that might be more informative to the client
+      // The client-side toast will pick up `error.message`
+      if (flowError instanceof Error) {
+        // Prepend a clear marker to the error message
+        throw new Error(`AI Service Error: ${flowError.message}`);
+      }
+      // Fallback for non-Error objects thrown
+      throw new Error('An unexpected error occurred while communicating with the AI service.');
     }
-    return output;
   }
 );
+
