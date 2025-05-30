@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -147,7 +148,25 @@ body {
   word-break: break-word;
   padding: 0.25rem; /* p-1 */
   font-weight: 500; /* medium */
+  font-size: 0.875rem; /* text-sm, base size */
+  line-height: 1.25rem; /* leading-tight */
 }
+
+@media (max-width: 480px) { /* Adjust for smaller screens */
+  .bingo-square-face {
+    font-size: 0.65rem; /* Smaller than text-xs */
+    line-height: 0.9rem;
+    padding: 0.1rem; /* Slightly reduce padding */
+  }
+}
+@media (min-width: 481px) and (max-width: 640px) { /* Adjust for slightly larger small screens */
+  .bingo-square-face {
+    font-size: 0.75rem; /* text-xs */
+    line-height: 1rem;
+    padding: 0.125rem;
+  }
+}
+
 
 .bingo-square-front {
   @apply bg-card text-card-foreground rounded-md border;

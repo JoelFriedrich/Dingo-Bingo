@@ -4,13 +4,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { BingoSquareState, GameMode } from '@/types/bingo';
-import { BINGO_CARD_TOTAL_SQUARES, GAME_MODES, GAME_MODE_STORAGE_KEY, PLAYER_NAME_STORAGE_KEY } from '@/types/bingo';
+import { BINGO_CARD_TOTAL_SQUARES, GAME_MODES, GAME_MODE_STORAGE_KEY } from '@/types/bingo';
 import { generateBingoCard, checkWin, DEFAULT_PHRASES, PHRASES_STORAGE_KEY } from '@/lib/bingo-utils';
 import BingoCard from '@/components/bingo/BingoCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { PartyPopper, RefreshCcw, Play, Trophy, Settings2, UserCircle } from 'lucide-react';
+import { PartyPopper, RefreshCcw, Play, Trophy, Settings2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import Link from 'next/link';
 
@@ -25,8 +25,6 @@ export default function BingoPage() {
   const [winningPattern, setWinningPattern] = useState<number[]>([]);
   const { toast } = useToast();
   const [isLoadingMode, setIsLoadingMode] = useState(true);
-  const [playerName, setPlayerName] = useState<string>('');
-  const [playerNameInput, setPlayerNameInput] = useState<string>('');
 
   useEffect(() => {
     const urlPhrasesParam = searchParams.get('phrases');
@@ -45,7 +43,7 @@ export default function BingoPage() {
           });
           loadedPhrasesFlag = true;
           // Optional: Clear the query param from URL. Consider if user might want to copy the URL again.
-          // router.replace('/', { scroll: false }); 
+          // router.replace('/', { scroll: false });
         }
       } catch (error) {
         console.error("Failed to parse phrases from URL", error);
@@ -81,19 +79,14 @@ export default function BingoPage() {
       setSelectedGameMode(storedMode);
     } else {
       router.replace('/select-mode');
-      return; 
+      return;
     }
     setIsLoadingMode(false);
 
-    const storedPlayerName = localStorage.getItem(PLAYER_NAME_STORAGE_KEY);
-    if (storedPlayerName) {
-      setPlayerName(storedPlayerName);
-      setPlayerNameInput(storedPlayerName);
-    }
   }, [router, searchParams, toast]);
 
   const startNewGame = useCallback(() => {
-    if (!selectedGameMode) return; 
+    if (!selectedGameMode) return;
     const newCard = generateBingoCard(phrases, selectedGameMode);
     setCurrentCard(newCard);
     setGameStarted(true);
@@ -119,7 +112,7 @@ export default function BingoPage() {
       const gameModeDetails = GAME_MODES.find(gm => gm.id === selectedGameMode);
       toast({
         title: "BINGO!",
-        description: `${playerName || 'Player'} won with ${gameModeDetails?.name || 'the selected mode'}!`,
+        description: `You won with ${gameModeDetails?.name || 'the selected mode'}!`,
         action: <PartyPopper className="text-yellow-400" />,
         duration: 5000,
       });
@@ -139,25 +132,6 @@ export default function BingoPage() {
       title: "Phrases Reset to Default",
       description: "The bingo phrases have been reset. You can start a new game with the default set.",
     });
-  };
-
-  const handleSavePlayerName = () => {
-    if (playerNameInput.trim()) {
-      setPlayerName(playerNameInput.trim());
-      localStorage.setItem(PLAYER_NAME_STORAGE_KEY, playerNameInput.trim());
-      toast({
-        title: "Player Name Saved!",
-        description: `You are now playing as ${playerNameInput.trim()}.`,
-      });
-    } else {
-      setPlayerName('');
-      localStorage.removeItem(PLAYER_NAME_STORAGE_KEY);
-      toast({
-        title: "Player Name Cleared",
-        description: "You are now playing as Guest.",
-        variant: "destructive"
-      });
-    }
   };
 
   if (isLoadingMode || !selectedGameMode) {
@@ -190,30 +164,9 @@ export default function BingoPage() {
         </Button>
       </div>
 
-      <div className="w-full max-w-md p-4 bg-card rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-3 text-center text-primary flex items-center justify-center gap-2">
-          <UserCircle className="h-6 w-6" /> Player
-        </h2>
-        <div className="flex items-center gap-2 mb-2">
-          <Input
-            id="playerNameInput"
-            type="text"
-            placeholder="Enter your name (e.g., Guest)"
-            value={playerNameInput}
-            onChange={(e) => setPlayerNameInput(e.target.value)}
-            className="flex-grow"
-            aria-label="Player Name"
-          />
-          <Button onClick={handleSavePlayerName} variant="outline" size="sm">Set Name</Button>
-        </div>
-        {playerName && <p className="text-xs text-muted-foreground text-center">Currently playing as: <strong>{playerName}</strong></p>}
-        {!playerName && <p className="text-xs text-muted-foreground text-center">Enter a name or play as Guest.</p>}
-      </div>
-
-
       {!sufficientPhrases && (
          <Alert variant="destructive" className="max-w-lg">
-          <Trophy className="h-4 w-4" /> {/* Using Trophy as a generic icon, could be WarningTriangle */}
+          <Trophy className="h-4 w-4" />
           <AlertTitle>Not Enough Phrases!</AlertTitle>
           <AlertDescription>
             You need at least {requiredPhrasesCount} unique phrases for {currentGameModeDetails?.name || 'the current'} mode. Please
@@ -239,18 +192,18 @@ export default function BingoPage() {
         </div>
       ) : (
         <div className="text-center p-8 bg-card rounded-lg shadow-lg max-w-md">
-          <h2 className="text-2xl font-semibold mb-4 text-primary">Ready to Play {playerName ? `${playerName}'s` : ''} {currentGameModeDetails?.name || ''} Game?</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-primary">Ready to Play {currentGameModeDetails?.name || ''} Game?</h2>
           <p className="text-muted-foreground mb-6">
             Hit "Start Game" to begin the fun!
             { !sufficientPhrases && " You might want to set up your phrases first or use the defaults."}
           </p>
         </div>
       )}
-      
+
       <div className="flex gap-4 items-center">
-        <Button 
-          onClick={startNewGame} 
-          size="lg" 
+        <Button
+          onClick={startNewGame}
+          size="lg"
           className="bg-accent hover:bg-accent/90 text-accent-foreground"
           disabled={(!sufficientPhrases && !gameStarted) || !selectedGameMode}
         >
@@ -262,7 +215,7 @@ export default function BingoPage() {
       {gameOver && (
         <div className="mt-4 p-6 bg-green-100 border-2 border-green-500 rounded-lg shadow-lg text-center max-w-md">
           <Trophy className="h-12 w-12 text-green-600 mx-auto mb-3" />
-          <h3 className="text-2xl font-bold text-green-700">Congratulations{playerName ? `, ${playerName}` : ''}! You got BINGO!</h3>
+          <h3 className="text-2xl font-bold text-green-700">Congratulations! You got BINGO!</h3>
           <p className="text-green-600 mt-2">Click "New Game" to play again with the same mode and phrases, or change mode.</p>
         </div>
       )}
