@@ -22,7 +22,7 @@ export default function Header() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-primary hover:opacity-80 transition-opacity">
           <Puzzle className="h-8 w-8" />
-          <span>Bingo Bonanza</span>
+          <span>Dingo Bingo</span>
         </Link>
 
         {/* Desktop Navigation: Visible on md screens and up */}
