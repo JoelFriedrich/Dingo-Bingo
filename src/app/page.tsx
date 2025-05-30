@@ -23,7 +23,7 @@ export default function BingoPage() {
   const [gameOver, setGameOver] = useState<boolean>(false);
   const [winningPattern, setWinningPattern] = useState<number[]>([]);
   const { toast } = useToast();
-  const [isLoadingMode, setIsLoadingMode] = useState(true);
+  const [isLoadingMode, setIsLoadingMode] = useState(true); // Initial state: true, to show loading for mode check
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -32,11 +32,11 @@ export default function BingoPage() {
 
   useEffect(() => {
     if (!isClient) {
-      return;
+      return; // Don't run this effect on the server or before client hydration
     }
 
-    const urlPhrasesParam = searchParams.get('phrases');
     let loadedPhrasesFlag = false;
+    const urlPhrasesParam = searchParams.get('phrases');
 
     if (urlPhrasesParam) {
       try {
@@ -44,7 +44,9 @@ export default function BingoPage() {
         const phrasesFromUrl = decodedPhrasesStr.split(';;;').map(p => p.trim()).filter(p => p.length > 0);
         if (phrasesFromUrl.length > 0) {
           setPhrases(phrasesFromUrl);
-          localStorage.setItem(PHRASES_STORAGE_KEY, JSON.stringify(phrasesFromUrl));
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(PHRASES_STORAGE_KEY, JSON.stringify(phrasesFromUrl));
+          }
           toast({
             title: "Phrases Loaded from URL",
             description: "The custom phrases from the URL have been loaded.",
@@ -62,16 +64,18 @@ export default function BingoPage() {
     }
 
     if (!loadedPhrasesFlag) {
-      const storedPhrases = localStorage.getItem(PHRASES_STORAGE_KEY);
-      if (storedPhrases) {
-        try {
-          const parsedPhrases = JSON.parse(storedPhrases);
-          if (Array.isArray(parsedPhrases) && parsedPhrases.length > 0) {
-            setPhrases(parsedPhrases);
-            loadedPhrasesFlag = true;
+      if (typeof window !== 'undefined') {
+        const storedPhrases = localStorage.getItem(PHRASES_STORAGE_KEY);
+        if (storedPhrases) {
+          try {
+            const parsedPhrases = JSON.parse(storedPhrases);
+            if (Array.isArray(parsedPhrases) && parsedPhrases.length > 0) {
+              setPhrases(parsedPhrases);
+              loadedPhrasesFlag = true;
+            }
+          } catch (error) {
+            console.error("Failed to parse phrases from localStorage", error);
           }
-        } catch (error) {
-          console.error("Failed to parse phrases from localStorage", error);
         }
       }
     }
@@ -80,25 +84,38 @@ export default function BingoPage() {
       setPhrases(DEFAULT_PHRASES);
     }
 
-    const storedMode = localStorage.getItem(GAME_MODE_STORAGE_KEY) as GameMode | null;
-    if (storedMode && GAME_MODES.some(gm => gm.id === storedMode)) {
-      setSelectedGameMode(storedMode);
+    if (typeof window !== 'undefined') {
+      const storedMode = localStorage.getItem(GAME_MODE_STORAGE_KEY) as GameMode | null;
+      if (storedMode && GAME_MODES.some(gm => gm.id === storedMode)) {
+        setSelectedGameMode(storedMode);
+        setIsLoadingMode(false); // Mode loaded successfully
+      } else {
+        router.replace('/select-mode');
+        // setIsLoadingMode(false); // Also set to false as we've made a decision (redirect)
+        return; // Exit if redirecting
+      }
     } else {
-      router.replace('/select-mode');
-      return; // Exit if redirecting, setIsLoadingMode will not be called for this path
+        // Should not happen if isClient is true, but as a fallback
+        router.replace('/select-mode');
+        return;
     }
-    setIsLoadingMode(false);
-
   }, [isClient, router, searchParams, toast]);
 
   const startNewGame = useCallback(() => {
-    if (!selectedGameMode) return;
+    if (!selectedGameMode) {
+      toast({
+        title: "Error",
+        description: "No game mode selected. Please select a mode first.",
+        variant: "destructive",
+      });
+      return;
+    }
     const newCard = generateBingoCard(phrases, selectedGameMode);
     setCurrentCard(newCard);
     setGameStarted(true);
     setGameOver(false);
     setWinningPattern([]);
-  }, [phrases, selectedGameMode]);
+  }, [phrases, selectedGameMode, toast]);
 
   const handleSquareClick = (index: number) => {
     if (gameOver || !gameStarted || !selectedGameMode) return;
@@ -142,10 +159,26 @@ export default function BingoPage() {
     });
   };
 
-  if (!isClient || isLoadingMode || !selectedGameMode) {
+  if (!isClient) {
+    // Initial static render for server/prerender
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
-        <svg className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <svg aria-hidden="true" className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <title>Loading</title>
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p className="text-xl text-muted-foreground mt-4">Loading game...</p>
+      </div>
+    );
+  }
+
+  // Once on the client, check if game mode is still loading or not selected
+  if (isLoadingMode || !selectedGameMode) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
+        <svg aria-hidden="true" className="animate-spin h-10 w-10 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+           <title>Loading Settings</title>
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
@@ -154,6 +187,7 @@ export default function BingoPage() {
     );
   }
 
+  // Game mode is loaded, proceed to render the game
   const requiredPhrasesCount = BINGO_CARD_TOTAL_SQUARES - (selectedGameMode === 'classic' && phrases.some(p => p.toUpperCase() === 'FREE') ? 0 : (selectedGameMode === 'classic' ? 1 : 0));
   const sufficientPhrases = phrases.length >= requiredPhrasesCount;
   const currentGameModeDetails = GAME_MODES.find(gm => gm.id === selectedGameMode);
@@ -174,7 +208,7 @@ export default function BingoPage() {
 
       {!sufficientPhrases && (
          <Alert variant="destructive" className="max-w-lg">
-          <Trophy className="h-4 w-4" />
+          <Trophy className="h-4 w-4" /> {/* This was Confetti, changed to Trophy as per an earlier fix */}
           <AlertTitle>Not Enough Phrases!</AlertTitle>
           <AlertDescription>
             You need at least {requiredPhrasesCount} unique phrases for {currentGameModeDetails?.name || 'the current'} mode. Please
@@ -230,4 +264,3 @@ export default function BingoPage() {
     </div>
   );
 }
-
